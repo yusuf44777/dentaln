@@ -6,17 +6,14 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# .env dosyasından ortam değişkenlerini yükle
 load_dotenv()
 
-# Sayfa Ayarları
 st.set_page_config(
-    page_title="Dentaln | Mahir Yusuf Açan",
+    page_title="Dentaln",
     page_icon="🦷",
     layout="wide"
 )
 
-# --- HELPER: .env VEYA Streamlit Cloud Secrets ---
 def get_secret(key, default=""):
     """Önce st.secrets, sonra os.getenv'den oku. Hem lokal hem cloud çalışır."""
     try:
@@ -27,7 +24,6 @@ def get_secret(key, default=""):
         pass
     return os.getenv(key, default)
 
-# --- YETKİLENDİRME SİSTEMİ ---
 IZINLI_EMAILLER = [
     e.strip() for e in get_secret("IZINLI_EMAILLER", "").split(",") if e.strip()
 ]
@@ -54,8 +50,7 @@ if not st.session_state.giris_yapildi:
     st.info("💡 Erişim için kayıtlı e-posta adresinizi kullanmanız gerekmektedir.")
     st.stop()
 
-# --- BAŞLIK ---
-st.title("🦷 Dentaln: Diş Hekimi Kariyer Asistanı")
+st.title("🦷 Dentaln: Diş Hekimleri için LinkedIn Asistanı")
 st.markdown(f"""
 **Communitive Dentistry Üsküdar** 2026 Açılış Etkinliği için özel olarak hazırlanmıştır.  
 LinkedIn profilinin **tüm bölümlerini** saniyeler içinde profesyonelce oluşturur.
@@ -70,37 +65,29 @@ if st.sidebar.button("🚪 Çıkış Yap"):
 
 st.divider()
 
-# ╔══════════════════════════════════════════╗
-# ║         AKILLI CV PARSER                 ║
-# ╚══════════════════════════════════════════╝
 
 def cv_regex_parser(text):
     """CV metninden regex ve keyword ile tüm bilgileri çeker."""
     data = {}
 
-    # --- AD SOYAD (ilk anlamlı satır) ---
     for line in text.split("\n"):
         line = line.strip()
         if len(line) > 3 and not any(kw in line.lower() for kw in ["cv", "özgeçmiş", "resume", "curriculum", "vitae", "sayfa", "page"]):
             data["ad_soyad"] = line
             break
 
-    # --- E-POSTA ---
     emails = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', text)
     data["email"] = emails[0] if emails else ""
 
-    # --- TELEFON ---
     telefonlar = re.findall(r'(?:\+90|0)?\s*[\(]?\d{3}[\)]?[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}', text)
     data["telefon"] = telefonlar[0].strip() if telefonlar else ""
 
-    # --- WEBSITE ---
     urls = re.findall(r'https?://[\w./\-@#?&=]+', text)
     linkedin_urls = [u for u in urls if 'linkedin' in u.lower()]
     other_urls = [u for u in urls if 'linkedin' not in u.lower()]
     data["website"] = other_urls[0] if other_urls else ""
     data["linkedin"] = linkedin_urls[0] if linkedin_urls else ""
 
-    # --- ÜNİVERSİTE ---
     univ_db = {
         "üsküdar": "Üsküdar Üniversitesi", "istanbul": "İstanbul Üniversitesi",
         "hacettepe": "Hacettepe Üniversitesi", "ankara": "Ankara Üniversitesi",
@@ -118,13 +105,11 @@ def cv_regex_parser(text):
         if key in text_lower:
             data["universite"] = val
             break
-    # Genel üniversite regex
     if not data["universite"]:
         univ_match = re.search(r'([A-ZÇĞİÖŞÜa-zçğıöşü\s]+?)\s*[Üü]niversitesi', text)
         if univ_match:
             data["universite"] = univ_match.group(0).strip()
 
-    # --- FAKÜLTE ---
     fakulte_keywords = ["Diş Hekimliği", "Dental", "Dentistry", "Dişhekimliği"]
     data["fakulte"] = "Diş Hekimliği Fakültesi"
     for fk in fakulte_keywords:
@@ -132,13 +117,11 @@ def cv_regex_parser(text):
             data["fakulte"] = "Diş Hekimliği Fakültesi"
             break
 
-    # --- GPA ---
     gpa_match = re.search(r'(?:GPA|GANO|not ortalaması|genel\s*not)[:\s]*([0-3]\.[0-9]{1,2})\s*/\s*4', text, re.IGNORECASE)
     if not gpa_match:
         gpa_match = re.search(r'([0-3]\.[0-9]{1,2})\s*/\s*4\.0{0,2}', text)
     data["gpa"] = gpa_match.group(0).strip() if gpa_match else ""
 
-    # --- KONUM ---
     sehirler = ["İstanbul", "Ankara", "İzmir", "Antalya", "Bursa", "Eskişehir",
                 "Konya", "Trabzon", "Kayseri", "Gaziantep", "Diyarbakır", "Samsun"]
     data["konum"] = ""
@@ -147,7 +130,6 @@ def cv_regex_parser(text):
             data["konum"] = f"{s}, Türkiye"
             break
 
-    # --- DİLLER ---
     dil_patterns = {
         "Türkçe": r'[Tt]ürk[çc]e[^\n]*', "İngilizce": r'[İiIı]ngilizce[^\n]*',
         "Almanca": r'[Aa]lmanca[^\n]*', "Fransızca": r'[Ff]rans[ıi]zca[^\n]*',
@@ -160,7 +142,6 @@ def cv_regex_parser(text):
         match = re.search(pattern, text)
         if match:
             satir = match.group(0).strip()
-            # Seviye bilgisi varsa al
             seviye = ""
             for s_kw in ["Ana Dil", "Native", "C2", "C1", "B2", "B1", "A2", "A1",
                          "Advanced", "Upper Intermediate", "Intermediate", "Pre-Intermediate",
@@ -171,7 +152,6 @@ def cv_regex_parser(text):
             bulunan_diller.append(f"{dil_adi} - {seviye}" if seviye else dil_adi)
     data["diller"] = "\n".join(bulunan_diller)
 
-    # --- SERTİFİKALAR ---
     sertifika_keywords = ["sertifika", "certificate", "certification", "kurs", "course",
                           "eğitim programı", "workshop", "seminer", "BLS", "CPR",
                           "ilk yardım", "first aid", "radyasyon", "udemy", "coursera",
@@ -184,7 +164,6 @@ def cv_regex_parser(text):
                 sertifika_satirlari.append(line_clean.lstrip("•-– "))
     data["sertifikalar"] = "\n".join(list(dict.fromkeys(sertifika_satirlari))[:10])
 
-    # --- TOPLULUKLAR ---
     topluluk_keywords = ["topluluk", "kulüp", "club", "dernek", "association",
                          "society", "öğrenci kolu", "TDB", "IADS", "IFMSA",
                          "communitive", "komite", "konsey"]
@@ -196,7 +175,6 @@ def cv_regex_parser(text):
                 topluluk_satirlari.append(line_clean.lstrip("•-– "))
     data["topluluklar"] = "\n".join(list(dict.fromkeys(topluluk_satirlari))[:10])
 
-    # --- GÖNÜLLÜLÜK ---
     gonulluluk_keywords = ["gönüllü", "volunteer", "toplum hizmeti", "sosyal sorumluluk",
                            "farkındalık", "tarama", "kampanya", "bağış", "yardım"]
     gonulluluk_satirlari = []
@@ -207,7 +185,6 @@ def cv_regex_parser(text):
                 gonulluluk_satirlari.append(line_clean.lstrip("•-– "))
     data["gonulluluk"] = "\n".join(list(dict.fromkeys(gonulluluk_satirlari))[:10])
 
-    # --- PROJELER & ARAŞTIRMALAR ---
     proje_keywords = ["proje", "project", "araştırma", "research", "yayın", "publication",
                       "poster", "tez", "thesis", "makale", "article", "vaka", "case study",
                       "TÜBİTAK", "literatür", "derleme"]
@@ -219,7 +196,6 @@ def cv_regex_parser(text):
                 proje_satirlari.append(line_clean.lstrip("•-– "))
     data["projeler"] = "\n".join(list(dict.fromkeys(proje_satirlari))[:10])
 
-    # --- BAŞARILAR & ÖDÜLLER ---
     basari_keywords = ["ödül", "award", "başarı", "burs", "scholarship", "dean's list",
                        "onur", "honor", "derece", "birincilik", "ikincilik", "üçüncülük",
                        "TÜBİTAK", "YKS", "LGS", "şampiy", "finalist"]
@@ -278,7 +254,6 @@ JSON formatı:
             max_completion_tokens=2000,
         )
         raw = response.choices[0].message.content.strip()
-        # JSON bloğunu çıkar
         json_match = re.search(r'\{[\s\S]*\}', raw)
         if json_match:
             return json.loads(json_match.group(0))
@@ -288,13 +263,9 @@ JSON formatı:
         return {}
 
 
-# ╔══════════════════════════════════════════╗
-# ║         SOL MENÜ - TÜM GİRDİLER         ║
-# ╚══════════════════════════════════════════╝
 
 st.sidebar.header("📋 Profil Bilgilerin")
 
-# --- CV Yükleme ---
 cv_secim = st.sidebar.radio("Nasıl Bilgi Girmek İstersin?", ["Manuel Giriş", "CV Yükle"])
 cv_text = ""
 cv_data = {}  # Parsed CV verisi
@@ -323,16 +294,13 @@ if cv_secim == "CV Yükle":
             cv_text = cv_dosya.read().decode("utf-8")
 
         if cv_text:
-            # Önce regex ile çek
             cv_data = cv_regex_parser(cv_text)
 
-            # API key varsa AI ile daha iyi çek
             env_api_key_cv = get_secret("OPENAI_API_KEY", "").strip()
             if env_api_key_cv:
                 with st.sidebar.status("🤖 AI ile CV analiz ediliyor...", expanded=False):
                     ai_data = cv_ai_parser(cv_text, env_api_key_cv)
                     if ai_data:
-                        # AI sonuçlarını boş olmayan regex sonuçlarıyla birleştir
                         for key_name, val in ai_data.items():
                             if val and isinstance(val, str) and val.strip():
                                 cv_data[key_name] = val.strip()
@@ -343,12 +311,10 @@ if cv_secim == "CV Yükle":
     else:
         st.sidebar.warning("👆 CV dosyanı yükle — tüm alanlar otomatik dolacak!")
 
-# --- Helper: CV'den değer al, yoksa default ---
 def cv_get(field, default=""):
     return cv_data.get(field, "").strip() or default
 
 
-# ── 1. KİŞİSEL BİLGİLER ──
 st.sidebar.subheader("👤 Kişisel Bilgiler")
 ad_soyad = st.sidebar.text_input("Adın Soyadın", cv_get("ad_soyad", "" if cv_secim == "CV Yükle" else "Örn: Mahir Yusuf Açan"))
 konum = st.sidebar.text_input("Konum (Şehir)", cv_get("konum", "İstanbul, Türkiye"))
@@ -356,7 +322,6 @@ email_goster = st.sidebar.text_input("LinkedIn'de gösterilecek e-posta", cv_get
 telefon = st.sidebar.text_input("Telefon (opsiyonel)", cv_get("telefon"), placeholder="+90 5XX XXX XX XX")
 website = st.sidebar.text_input("Kişisel Website / Portfolio (opsiyonel)", cv_get("website"), placeholder="https://...")
 
-# ── 2. EĞİTİM BİLGİLERİ ──
 st.sidebar.subheader("🎓 Eğitim Bilgileri")
 universite = st.sidebar.text_input("Üniversiten", cv_get("universite", "Üsküdar Üniversitesi"))
 fakulte = st.sidebar.text_input("Fakülte", cv_get("fakulte", "Diş Hekimliği Fakültesi"))
@@ -367,10 +332,8 @@ baslangic_yili = st.sidebar.selectbox("Eğitim Başlangıç Yılı", list(range(
 bitis_yili = st.sidebar.selectbox("Beklenen Mezuniyet Yılı", list(range(2030, 2024, -1)), index=2)
 gpa = st.sidebar.text_input("GPA / Not Ortalaması", cv_get("gpa"), placeholder="3.45 / 4.00")
 
-# ── 3. UZMANLIK & İLGİ ALANLARI ──
 st.sidebar.subheader("🔬 Uzmanlık & İlgi Alanları")
 
-# AI'dan gelen klinik ilgi alanlarını eşleştir
 klinik_secenekler = ["Estetik Diş Hekimliği", "Oral Cerrah", "Ortodonti", "Endodonti", "Pedodonti",
      "Periodontoloji", "İmplantoloji", "Protetik Diş Hekimliği", "Radyoloji",
      "Ağız Patolojisi", "Restoratif Diş Hekimliği"]
@@ -403,7 +366,6 @@ diger_ilgi = st.sidebar.multiselect(
     default=cv_diger_default if cv_diger_default else ["Akademik Araştırma"]
 )
 
-# ── 4. TOPLULUKLAR & AKTİVİTELER ──
 st.sidebar.subheader("🏛️ Topluluklar & Aktiviteler")
 topluluklar = st.sidebar.text_area(
     "Üye Olduğun Topluluklar / Kulüpler (her satıra bir tane)",
@@ -411,7 +373,6 @@ topluluklar = st.sidebar.text_area(
     placeholder="Communitive Dentistry Üsküdar\nTDB Öğrenci Kolu"
 )
 
-# ── 5. SERTİFİKALAR & KURSLAR ──
 st.sidebar.subheader("📜 Sertifikalar & Kurslar")
 sertifikalar = st.sidebar.text_area(
     "Sertifikalar / kurslar (her satıra bir tane)",
@@ -419,7 +380,6 @@ sertifikalar = st.sidebar.text_area(
     placeholder="Temel Yaşam Desteği (BLS) Sertifikası\nCAD/CAM Dijital Diş Hekimliği Kursu"
 )
 
-# ── 6. GÖNÜLLÜ DENEYİMLER ──
 st.sidebar.subheader("🤝 Gönüllü Deneyimler")
 gonulluluk = st.sidebar.text_area(
     "Gönüllü çalışmaların (her satıra bir tane)",
@@ -427,7 +387,6 @@ gonulluluk = st.sidebar.text_area(
     placeholder="Toplum Ağız Sağlığı Taraması\nDiş Fırçalama Eğitimi - İlkokul Projesi"
 )
 
-# ── 7. PROJELER & ARAŞTIRMALAR ──
 st.sidebar.subheader("🔬 Projeler & Araştırmalar")
 projeler = st.sidebar.text_area(
     "Projeler, araştırmalar, yayınlar (her satıra bir tane)",
@@ -435,7 +394,6 @@ projeler = st.sidebar.text_area(
     placeholder="Yapay Zeka ile Çürük Tespiti\nDijital Gülüş Tasarımı Vaka Çalışması"
 )
 
-# ── 8. DİL BİLGİSİ ──
 st.sidebar.subheader("🗣️ Dil Bilgisi")
 diller = st.sidebar.text_area(
     "Bildiğin diller ve seviyeleri (her satıra bir tane)",
@@ -443,7 +401,6 @@ diller = st.sidebar.text_area(
     placeholder="Türkçe - Ana Dil\nİngilizce - B2\nAlmanca - A2"
 )
 
-# ── 9. BAŞARILAR & ÖDÜLLER ──
 st.sidebar.subheader("🏆 Başarılar & Ödüller")
 basarilar = st.sidebar.text_area(
     "Başarılar, ödüller, burslar (her satıra bir tane)",
@@ -451,16 +408,12 @@ basarilar = st.sidebar.text_area(
     placeholder="YKS ilk 5000\nDean's List 2024\nTÜBİTAK Proje Desteği"
 )
 
-# ── 10. HEDEF ──
 st.sidebar.subheader("🎯 LinkedIn Hedefin")
 hedef = st.sidebar.radio(
     "Şu anki LinkedIn Hedefin Ne?",
     ["Staj Bulmak", "Network Genişletmek", "Yurt Dışı Olanakları", "Sadece Vitrin Oluşturmak"]
 )
 
-# ╔══════════════════════════════════════════╗
-# ║         OLUŞTURMA AYARLARI               ║
-# ╚══════════════════════════════════════════╝
 st.sidebar.divider()
 st.sidebar.header("⚙️ Oluşturma Ayarları")
 
@@ -490,9 +443,6 @@ if generator_modu == "🤖 AI ile Oluştur (GPT-5.2)":
         api_key = st.sidebar.text_input("OpenAI API Anahtarını Gir:", type="password", placeholder="sk-...")
 
 
-# ╔══════════════════════════════════════════╗
-# ║         AI GENERATOR FONKSİYONLARI       ║
-# ╚══════════════════════════════════════════╝
 
 def ai_ile_olustur(prompt: str, key: str) -> str:
     """GPT-5.2 ile metin oluşturur."""
@@ -527,14 +477,10 @@ def get_dil_talimat(dil):
     }[dil]
 
 
-# --- HELPER: Satır bazlı text_area'dan listeye ---
 def satirdan_listeye(metin):
     return [s.strip() for s in metin.strip().split("\n") if s.strip()]
 
 
-# ╔══════════════════════════════════════════╗
-# ║              AI PROMPTLARI               ║
-# ╚══════════════════════════════════════════╝
 
 def headline_promptu(ad_soyad, universite, sinif, klinik_str, diger_str, hedef, dil):
     return f"""LinkedIn profil başlığı (headline) oluştur.
@@ -740,9 +686,6 @@ Kurallar:
 {get_dil_talimat(dil)}"""
 
 
-# ╔══════════════════════════════════════════╗
-# ║              ANA ALAN - ÇIKTILAR         ║
-# ╚══════════════════════════════════════════╝
 
 if st.button("✨ Profilimi Oluştur! ✨", type="primary", use_container_width=True):
 
@@ -752,7 +695,6 @@ if st.button("✨ Profilimi Oluştur! ✨", type="primary", use_container_width=
         st.error("❌ AI modu için OpenAI API anahtarı gerekli!")
         st.stop()
 
-    # Veri İşleme
     klinik_str = " | ".join(klinik_ilgi) if klinik_ilgi else "Genel Diş Hekimliği"
     diger_str = " & ".join(diger_ilgi) if diger_ilgi else "Klinik Beceriler"
     topluluk_list = satirdan_listeye(topluluklar)
@@ -773,7 +715,6 @@ if st.button("✨ Profilimi Oluştur! ✨", type="primary", use_container_width=
     else:
         st.success(f"📝 {sinif} seviyesine uygun profesyonel metinler hazırlandı.")
 
-    # ── TAB YAPISI (10 BÖLÜM) ──
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "📢 Headline",
         "📝 Hakkında",
@@ -787,9 +728,6 @@ if st.button("✨ Profilimi Oluştur! ✨", type="primary", use_container_width=
         "✉️ Mesajlar & İpuçları"
     ])
 
-    # ═══════════════════════════════════════
-    # TAB 1: HEADLINE
-    # ═══════════════════════════════════════
     with tab1:
         st.subheader("📢 Profil Başlığın (Headline)")
         st.info("💡 LinkedIn'de adının hemen altında görünen bu alan arama sonuçlarında çıkmanı sağlar. **Max 120 karakter.**")
@@ -818,9 +756,6 @@ if st.button("✨ Profilimi Oluştur! ✨", type="primary", use_container_width=
             st.markdown(f"**2. Focused:** `Aspiring Dentist | {klinik_str} | {diger_str}`")
             st.markdown(f"**3. Goal-Oriented:** `Future Dentist @{universite} | Passionate about Innovation in Dentistry`")
 
-    # ═══════════════════════════════════════
-    # TAB 2: HAKKINDA (ABOUT)
-    # ═══════════════════════════════════════
     with tab2:
         st.subheader("📝 Hikayeni Anlat (About)")
         st.info("💡 LinkedIn'in en önemli bölümü! İlk 3 satır 'Daha fazla gör' tıklanmadan görünür — bu yüzden hook ile başla.")
@@ -877,9 +812,6 @@ I'm actively using LinkedIn for {hedef_en_map.get(hedef, 'professional growth')}
 {f"🌐 {website}" if website else ""}"""
             st.text_area("🇬🇧 English:", value=about_en.strip(), height=300, key="about_en")
 
-    # ═══════════════════════════════════════
-    # TAB 3: EĞİTİM (EDUCATION)
-    # ═══════════════════════════════════════
     with tab3:
         st.subheader("🎓 Eğitim (Education)")
         st.info("💡 Sadece okul adı yazmak yetmez! Activities, Description ve Courses alanlarını doldur.")
@@ -937,9 +869,6 @@ Currently a {sinif} student at {universite} {fakulte}, pursuing both theoretical
 • [Add your courses]"""
             st.text_area("🇬🇧 English:", value=edu_en.strip(), height=350, key="edu_en")
 
-    # ═══════════════════════════════════════
-    # TAB 4: DENEYİM (EXPERIENCE)
-    # ═══════════════════════════════════════
     with tab4:
         st.subheader("💼 Deneyim (Experience)")
         st.info("💡 Öğrenciliğini bir iş deneyimi gibi anlat! Her topluluk rolü ayrı bir deneyim maddesi olabilir.")
@@ -966,7 +895,6 @@ Currently a {sinif} student at {universite} {fakulte}, pursuing both theoretical
 • Preklinik laboratuvar çalışmalarında el becerisi ve materyal bilgisi üzerine yoğunlaşıyorum.
 • [Klinik staj deneyimlerini ekle]"""
 
-            # Topluluklar için ek deneyimler
             for i, topluluk in enumerate(topluluk_list[:3], 2):
                 exp_tr += f"""
 
@@ -1006,9 +934,6 @@ Currently a {sinif} student at {universite} {fakulte}, pursuing both theoretical
 
             st.text_area("🇬🇧 English:", value=exp_en.strip(), height=500, key="exp_en")
 
-    # ═══════════════════════════════════════
-    # TAB 5: BECERİLER (SKILLS)
-    # ═══════════════════════════════════════
     with tab5:
         st.subheader("🛠️ Beceriler (Skills & Endorsements)")
         st.info("💡 5+ beceri ekle — bu, bağlantı isteği alma oranını **3 kat** artırır! İlk 3'ü profilinde doğrudan görünür.")
@@ -1024,7 +949,6 @@ Currently a {sinif} student at {universite} {fakulte}, pursuing both theoretical
             st.divider()
             st.markdown("### 📝 Şablon Beceri Listesi")
 
-        # Klinik beceriler
         klinik_beceriler_tr = [
             "Oral Muayene ve Teşhis", "Dental Radyografi", "Restoratif Diş Hekimliği",
             "Endodontik Tedavi", "Periodontoloji", "Protetik Diş Hekimliği",
@@ -1066,9 +990,6 @@ Currently a {sinif} student at {universite} {fakulte}, pursuing both theoretical
             for i, b in enumerate(diger_beceriler_en, 1):
                 st.markdown(f"{i}. ✅ {b}")
 
-    # ═══════════════════════════════════════
-    # TAB 6: SERTİFİKALAR
-    # ═══════════════════════════════════════
     with tab6:
         st.subheader("📜 Lisanslar & Sertifikalar (Licenses & Certifications)")
         st.info("💡 Tamamladığın her kursu ve sertifikayı ekle. LinkedIn Learning sertifikaları otomatik eklenir!")
@@ -1108,9 +1029,6 @@ Currently a {sinif} student at {universite} {fakulte}, pursuing both theoretical
         for kurs, kurum in onerilen:
             st.markdown(f"- ✅ **{kurs}** — *{kurum}*")
 
-    # ═══════════════════════════════════════
-    # TAB 7: GÖNÜLLÜLÜK
-    # ═══════════════════════════════════════
     with tab7:
         st.subheader("🤝 Gönüllü Deneyim (Volunteer Experience)")
         st.info("💡 Gönüllülük bölümü profilini insancıllaştırır ve toplum sağlığına verdiğin değeri gösterir.")
@@ -1147,9 +1065,6 @@ Currently a {sinif} student at {universite} {fakulte}, pursuing both theoretical
         for f in fikirler:
             st.markdown(f"- {f}")
 
-    # ═══════════════════════════════════════
-    # TAB 8: PROJELER
-    # ═══════════════════════════════════════
     with tab8:
         st.subheader("🔬 Projeler & Yayınlar (Projects & Publications)")
         st.info("💡 Araştırma projeleri ve vaka çalışmaları profilini akademik açıdan güçlendirir.")
@@ -1188,9 +1103,6 @@ Currently a {sinif} student at {universite} {fakulte}, pursuing both theoretical
         for f in proje_fikirleri:
             st.markdown(f"- {f}")
 
-    # ═══════════════════════════════════════
-    # TAB 9: ÖNERİLER (RECOMMENDATIONS)
-    # ═══════════════════════════════════════
     with tab9:
         st.subheader("⭐ Öneriler (Recommendations)")
         st.info("💡 Kişisel tanıklıklar profilinin güvenilirliğini artırır. En az 2-3 öneri almayı hedefle!")
@@ -1243,13 +1155,9 @@ Best regards,
             rec_sample_en = f"""I had the pleasure of teaching {ad_soyad} at {universite}. Their passion for {klinik_str} is evident in their meticulous approach to clinical work and dedication to continuous learning. Beyond technical skills, they demonstrate excellent patient communication and a collaborative spirit. I am confident they will make significant contributions to the dental profession."""
             st.text_area("🇬🇧 Sample Recommendation:", value=rec_sample_en, height=150, key="rec_sample_en")
 
-    # ═══════════════════════════════════════
-    # TAB 10: MESAJLAR, FEATURED & İPUÇLARI
-    # ═══════════════════════════════════════
     with tab10:
         st.subheader("✉️ Bağlantı Mesajları & Profil İpuçları")
 
-        # Bağlantı Mesajları
         st.markdown("### ✉️ Bağlantı İsteği Mesajları (Connection Request)")
         st.warning("LinkedIn bağlantı notu max 300 karakter! 'Not Ekle' diyerek kullanabilirsin.")
 
@@ -1284,7 +1192,6 @@ Best regards,
 
         st.divider()
 
-        # Featured Section
         st.markdown("### 🌟 Öne Çıkanlar (Featured Section)")
         st.info("💡 Profilinin en görünür bölümlerinden biri! Post, makale, sertifika ve proje linkleri ekleyebilirsin.")
 
@@ -1312,7 +1219,6 @@ Best regards,
 
         st.divider()
 
-        # Profil Fotoğrafı İpuçları
         st.markdown("### 📸 Profil Fotoğrafı İpuçları")
         st.markdown("""
 LinkedIn'in kendi araştırmasına göre profil fotoğrafı olan hesaplar **14 kat daha fazla** görüntülenir!
@@ -1335,7 +1241,6 @@ LinkedIn'in kendi araştırmasına göre profil fotoğrafı olan hesaplar **14 k
 
         st.divider()
 
-        # Banner İpuçları
         st.markdown("### 🖼️ Kapak Fotoğrafı (Banner) İpuçları")
         st.markdown(f"""
 - **Boyut:** 1584 x 396 piksel
@@ -1347,7 +1252,6 @@ LinkedIn'in kendi araştırmasına göre profil fotoğrafı olan hesaplar **14 k
 
         st.divider()
 
-        # Dil Bilgisi
         st.markdown("### 🗣️ Dil Bilgisi (Languages)")
         if dil_list:
             for d in dil_list:
@@ -1357,7 +1261,6 @@ LinkedIn'in kendi araştırmasına göre profil fotoğrafı olan hesaplar **14 k
 
         st.divider()
 
-        # Takip Önerileri
         st.markdown("### 👥 Takip Edilmesi Önerilen Hesaplar")
         st.markdown("""
 LinkedIn'de sektör liderlerini takip etmek, feedinde kaliteli içerik görmeni sağlar:
@@ -1374,7 +1277,6 @@ LinkedIn'de sektör liderlerini takip etmek, feedinde kaliteli içerik görmeni 
 else:
     st.info("👈 Sol menüden bilgilerini gir ve sihrin gerçekleşmesini bekle!")
 
-# --- FOOTER ---
 st.markdown("---")
 col_f1, col_f2 = st.columns(2)
 with col_f1:
