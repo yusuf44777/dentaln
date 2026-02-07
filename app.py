@@ -1280,7 +1280,7 @@ else:
 st.markdown("---")
 col_f1, col_f2 = st.columns(2)
 with col_f1:
-    st.caption("Developed by **Mahir Yusuf Açan** (Data Scientist & Dental Student)")
+    st.caption("Developed by **Mahir Yusuf Açan** (Data Scientist & Dentistry Student)")
 with col_f2:
     if generator_modu == "🤖 AI ile Oluştur (GPT-5.2)":
         st.caption("Powered by **Streamlit** & **OpenAI GPT-5.2** 🤖")
