@@ -9,7 +9,7 @@ from openai import OpenAI
 load_dotenv()
 
 st.set_page_config(
-    page_title="Dentaln",
+    page_title="DentalIn",
     page_icon="🦷",
     layout="wide"
 )
@@ -37,7 +37,7 @@ LOGO_URL = "https://i.imgur.com/ANd1Q5y.jpeg"
 
 if not st.session_state.giris_yapildi:
     st.image(LOGO_URL, width=200)
-    st.title("🔐 Dentaln - Giriş")
+    st.title("🔐 DentalIn - Giriş")
     st.markdown("### Devam etmek için lütfen e-posta adresinizi girin")
     email_input = st.text_input("E-posta Adresiniz:", placeholder="ornek@email.com")
     col1, col2 = st.columns([1, 3])
@@ -54,7 +54,7 @@ if not st.session_state.giris_yapildi:
     st.stop()
 
 st.image(LOGO_URL, width=180)
-st.title("🦷 Dentaln: Diş Hekimleri için LinkedIn Asistanı")
+st.title("🦷 DentalIn: Diş Hekimleri için LinkedIn Asistanı")
 st.markdown(f"""
 **Communitive Dentistry Üsküdar** 2026 Açılış Etkinliği için özel olarak hazırlanmıştır.  
 LinkedIn profilinin **tüm bölümlerini** saniyeler içinde profesyonelce oluşturur.
