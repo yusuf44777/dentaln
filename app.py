@@ -33,7 +33,10 @@ if 'giris_yapildi' not in st.session_state:
 if 'kullanici_email' not in st.session_state:
     st.session_state.kullanici_email = ""
 
+LOGO_URL = "https://i.imgur.com/ANd1Q5y.jpeg"
+
 if not st.session_state.giris_yapildi:
+    st.image(LOGO_URL, width=200)
     st.title("🔐 Dentaln - Giriş")
     st.markdown("### Devam etmek için lütfen e-posta adresinizi girin")
     email_input = st.text_input("E-posta Adresiniz:", placeholder="ornek@email.com")
@@ -50,6 +53,7 @@ if not st.session_state.giris_yapildi:
     st.info("💡 Erişim için kayıtlı e-posta adresinizi kullanmanız gerekmektedir.")
     st.stop()
 
+st.image(LOGO_URL, width=180)
 st.title("🦷 Dentaln: Diş Hekimleri için LinkedIn Asistanı")
 st.markdown(f"""
 **Communitive Dentistry Üsküdar** 2026 Açılış Etkinliği için özel olarak hazırlanmıştır.  
